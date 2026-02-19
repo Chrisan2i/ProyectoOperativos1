@@ -3,7 +3,7 @@
  */
 
 package com.unimet.proyecto_operativo1;
-
+import com.unimet.interfaz.Simulacion;
 /**
  *
  * @author chris
@@ -11,6 +11,8 @@ package com.unimet.proyecto_operativo1;
 public class Proyecto_operativo1 {
 
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        Simulacion ventana = new Simulacion();
+        ventana.setVisible(true);
+        ventana.setLocationRelativeTo(null); // Para que salga en el centro
     }
 }
