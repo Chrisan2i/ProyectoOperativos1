@@ -44,6 +44,10 @@ public class PCB {
 
     public int getId() { return id; }
     
+    public int getMar() { 
+    return mar; 
+}
+    
     public String getNombre() { return nombre; }
     
     public String getEstado() { return estado; }

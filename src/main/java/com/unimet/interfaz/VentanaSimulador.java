@@ -5,6 +5,9 @@ import com.unimet.clases.PCB;
 import com.unimet.estructuras.Cola;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
@@ -56,16 +59,17 @@ public class VentanaSimulador extends JFrame {
 
     public VentanaSimulador() {
         setTitle("UNIMET-Sat RTOS | Mission Control Center");
-        setSize(1350, 850); // Un poco más grande para que quepa todo
+        setSize(1450, 850); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout(15, 15));
         getContentPane().setBackground(colorFondo);
+        ((JComponent)getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        misGraficas = new GestorGraficas(); // Inicia la ventana de gráficos
+        misGraficas = new GestorGraficas(); 
         inicializarComponentes();
         
-        generarProcesosAleatorios(5); // Poblar colas inicialmente (Requisito PDF)
+        generarProcesosAleatorios(5); 
         actualizarTablas();
     }
 
@@ -73,7 +77,7 @@ public class VentanaSimulador extends JFrame {
         String[] columnasPCB = {"ID", "Nombre", "Status", "PC", "MAR", "Prio", "Deadline"};
 
         // --- ZONA OESTE: RAM ---
-        JPanel panelRAM = new JPanel(new GridLayout(2, 1, 5, 5));
+        JPanel panelRAM = new JPanel(new GridLayout(2, 1, 10, 10));
         panelRAM.setOpaque(false);
         modeloListos = new DefaultTableModel(columnasPCB, 0);
         tablaListos = new JTable(modeloListos);
@@ -84,7 +88,7 @@ public class VentanaSimulador extends JFrame {
         panelRAM.add(crearPanelTabla("Blocked Queue (RAM - I/O)", tablaBloqueados, colorRojo));
 
         // --- ZONA ESTE: SWAP (DISCO) ---
-        JPanel panelDisco = new JPanel(new GridLayout(2, 1, 5, 5));
+        JPanel panelDisco = new JPanel(new GridLayout(2, 1, 10, 10));
         panelDisco.setOpaque(false);
         modeloListosSusp = new DefaultTableModel(columnasPCB, 0);
         tablaListosSusp = new JTable(modeloListosSusp);
@@ -95,35 +99,39 @@ public class VentanaSimulador extends JFrame {
         panelDisco.add(crearPanelTabla("Swap Space: Blocked-Suspended", tablaBloqSusp, Color.GRAY));
 
         // --- ZONA CENTRAL: CPU Y CONTROLES ---
-        JPanel panelCentral = new JPanel(new BorderLayout());
+        JPanel panelCentral = new JPanel(new BorderLayout(0, 15));
         panelCentral.setOpaque(false);
+        panelCentral.setBorder(new EmptyBorder(0, 10, 0, 10)); 
 
-        // Aumentamos a 5 filas para agregar el Modo Sistema
-        JPanel panelCPU = new JPanel(new GridLayout(5, 1, 5, 5));
-        panelCPU.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(colorBorde), "RUNNING PROCESS (CPU)", 0, 0, null, colorBorde));
+        JPanel panelCPU = new JPanel(new GridLayout(5, 1, 10, 10));
+        panelCPU.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(colorBorde, 2), " RUNNING PROCESS (CPU) ", TitledBorder.LEFT, TitledBorder.TOP, new Font("Consolas", Font.BOLD, 14), colorBorde),
+                new EmptyBorder(20, 20, 20, 20)
+        ));
         panelCPU.setBackground(colorPanel);
         
         lblRelojGlobal = new JLabel("MISSION CLOCK: Cycle 0", SwingConstants.CENTER);
         lblRelojGlobal.setForeground(colorBorde);
-        lblRelojGlobal.setFont(new Font("Impact", Font.PLAIN, 26));
+        lblRelojGlobal.setFont(new Font("Impact", Font.PLAIN, 32));
         
-        // ETIQUETA NUEVA: MODO SISTEMA O USUARIO
         lblModoSistema = new JLabel("MODO: SISTEMA OPERATIVO", SwingConstants.CENTER);
         lblModoSistema.setForeground(Color.YELLOW);
-        lblModoSistema.setFont(new Font("Consolas", Font.BOLD, 16));
+        lblModoSistema.setFont(new Font("Consolas", Font.BOLD, 18));
         
         lblMemoriaRAM = new JLabel("Memory Usage: 0/5", SwingConstants.CENTER);
         lblMemoriaRAM.setForeground(colorVerde);
-        lblMemoriaRAM.setFont(new Font("Consolas", Font.BOLD, 14));
+        lblMemoriaRAM.setFont(new Font("Consolas", Font.BOLD, 16));
 
         lblProcesoActual = new JLabel("IDLE - Esperando Procesos...", SwingConstants.CENTER);
         lblProcesoActual.setForeground(Color.WHITE);
-        lblProcesoActual.setFont(new Font("Consolas", Font.BOLD, 16));
+        lblProcesoActual.setFont(new Font("Consolas", Font.BOLD, 18));
         
         barraProgresoCPU = new JProgressBar(0, 100);
         barraProgresoCPU.setStringPainted(true);
         barraProgresoCPU.setForeground(colorVerde);
-        barraProgresoCPU.setBackground(Color.BLACK);
+        barraProgresoCPU.setBackground(Color.decode("#0F172A"));
+        barraProgresoCPU.setFont(new Font("Consolas", Font.BOLD, 14));
+        barraProgresoCPU.setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
         panelCPU.add(lblRelojGlobal);
         panelCPU.add(lblModoSistema);
@@ -131,11 +139,35 @@ public class VentanaSimulador extends JFrame {
         panelCPU.add(lblProcesoActual);
         panelCPU.add(barraProgresoCPU);
         
-        JPanel panelControles = new JPanel(new FlowLayout());
+        // --- AQUÍ ESTÁ LA SOLUCIÓN DEL BOTÓN OCULTO ---
+        // Usamos un GridLayout de 2 filas para asegurar que los botones no se oculten
+        JPanel panelControles = new JPanel(new GridLayout(2, 1, 5, 5));
         panelControles.setBackground(colorPanel);
-        panelControles.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        panelControles.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.GRAY),
+                new EmptyBorder(10, 5, 10, 5)
+        ));
 
         cmbAlgoritmos = new JComboBox<>(new String[]{"FCFS", "RR", "Prioridad", "SRT", "EDF"});
+        cmbAlgoritmos.setFont(new Font("Consolas", Font.BOLD, 14));
+        cmbAlgoritmos.addActionListener(e -> {
+            String algoritmo = (String) cmbAlgoritmos.getSelectedItem();
+            int criterio = -1;
+            contadorQuantum = 0;
+            
+            if (algoritmo.equals("Prioridad")) criterio = Cola.CRITERIO_PRIORIDAD;
+            else if (algoritmo.equals("SRT")) criterio = Cola.CRITERIO_SRT;
+            else if (algoritmo.equals("EDF")) criterio = Cola.CRITERIO_EDF;
+
+            if (criterio != -1) {
+                colaListos.ordenar(criterio);
+                colaListosSuspendidos.ordenar(criterio);
+            }
+            
+            actualizarTablas(); 
+            escribirLog("Algoritmo modificado a " + algoritmo + ". Colas reordenadas dinámicamente.");
+        });
+        
         btnIniciar = new JButton("Iniciar Simulación");
         btnCrearProceso = new JButton("Crear 1 Proceso");
         btnCrear20 = new JButton("Generar 20 Aleatorios");
@@ -143,6 +175,13 @@ public class VentanaSimulador extends JFrame {
         
         spnQuantum = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
         spnVelocidad = new JSpinner(new SpinnerNumberModel(1000, 100, 5000, 100));
+        
+        JComponent editorQuantum = spnQuantum.getEditor();
+        JComponent editorVelocidad = spnVelocidad.getEditor();
+        if (editorQuantum instanceof JSpinner.DefaultEditor) {
+            ((JSpinner.DefaultEditor)editorQuantum).getTextField().setFont(new Font("Consolas", Font.BOLD, 14));
+            ((JSpinner.DefaultEditor)editorVelocidad).getTextField().setFont(new Font("Consolas", Font.BOLD, 14));
+        }
 
         estilizarBoton(btnIniciar, colorVerde);
         estilizarBoton(btnCrearProceso, colorBorde);
@@ -154,29 +193,35 @@ public class VentanaSimulador extends JFrame {
         btnCrear20.addActionListener(e -> generarProcesosAleatorios(20));
         btnCargarArchivo.addActionListener(e -> cargarDesdeArchivo());
 
-        panelControles.add(new JLabel("<html><font color='white'>Algoritmo:</font></html>"));
-        panelControles.add(cmbAlgoritmos);
-        panelControles.add(new JLabel("<html><font color='white'>Quantum:</font></html>"));
-        panelControles.add(spnQuantum);
-        panelControles.add(new JLabel("<html><font color='white'>Velocidad(ms):</font></html>"));
-        panelControles.add(spnVelocidad);
-        panelControles.add(btnIniciar);
+        // Fila 1: Opciones
+        JPanel filaOpciones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        filaOpciones.setOpaque(false);
+        filaOpciones.add(new JLabel("<html><font color='white' size='4'>Algoritmo:</font></html>"));
+        filaOpciones.add(cmbAlgoritmos);
+        filaOpciones.add(new JLabel("<html><font color='white' size='4'>Quantum:</font></html>"));
+        filaOpciones.add(spnQuantum);
+        filaOpciones.add(new JLabel("<html><font color='white' size='4'>Velocidad(ms):</font></html>"));
+        filaOpciones.add(spnVelocidad);
+
+        // Fila 2: Botones (Todos agrupados para que ninguno se pierda)
+        JPanel filaBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        filaBotones.setOpaque(false);
+        filaBotones.add(btnIniciar);
+        filaBotones.add(btnCrearProceso);
+        filaBotones.add(btnCrear20);
+        filaBotones.add(btnCargarArchivo);
+
+        panelControles.add(filaOpciones);
+        panelControles.add(filaBotones);
         
-        JPanel panelExtraBotones = new JPanel();
-        panelExtraBotones.setOpaque(false);
-        panelExtraBotones.add(btnCrearProceso);
-        panelExtraBotones.add(btnCrear20);
-        panelExtraBotones.add(btnCargarArchivo);
-        
-        // ETIQUETA NUEVA: THROUGHPUT Y ESPERA
         lblMetricas = new JLabel("Throughput: 0.00 proc/ciclo | Espera Promedio: 0.0 ciclos", SwingConstants.CENTER);
         lblMetricas.setForeground(Color.CYAN);
-        lblMetricas.setFont(new Font("Consolas", Font.BOLD, 14));
+        lblMetricas.setFont(new Font("Consolas", Font.BOLD, 15));
+        lblMetricas.setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        JPanel surCentral = new JPanel(new BorderLayout());
+        JPanel surCentral = new JPanel(new BorderLayout(0, 5));
         surCentral.setOpaque(false);
-        surCentral.add(panelControles, BorderLayout.NORTH);
-        surCentral.add(panelExtraBotones, BorderLayout.CENTER);
+        surCentral.add(panelControles, BorderLayout.CENTER);
         surCentral.add(lblMetricas, BorderLayout.SOUTH);
 
         panelCentral.add(panelCPU, BorderLayout.CENTER);
@@ -187,11 +232,17 @@ public class VentanaSimulador extends JFrame {
         txtLogEventos.setEditable(false);
         txtLogEventos.setBackground(Color.BLACK);
         txtLogEventos.setForeground(colorVerde);
-        txtLogEventos.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        txtLogEventos.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        
+        txtLogEventos.setBorder(new EmptyBorder(5, 10, 5, 10)); 
+        
         JScrollPane scrollLog = new JScrollPane(txtLogEventos);
-        scrollLog.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), "System Log", 0, 0, null, colorTexto));
+        scrollLog.setBackground(colorFondo); 
+        scrollLog.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), " System Log ", TitledBorder.LEFT, TitledBorder.TOP, new Font("Consolas", Font.BOLD, 14), Color.WHITE),
+            new EmptyBorder(5, 5, 5, 5)
+        ));
 
-        // ENSAMBLAR
         add(panelRAM, BorderLayout.WEST);
         add(panelDisco, BorderLayout.EAST);
         add(panelCentral, BorderLayout.CENTER);
@@ -204,11 +255,10 @@ public class VentanaSimulador extends JFrame {
         corriendo = true;
         escribirLog("Sistema Operativo Iniciado.");
 
-        // HILO DEL PLANIFICADOR
         Thread hiloSimulacion = new Thread(() -> {
             while (corriendo) {
                 try {
-                    semaforoSistema.acquire(); // Bloquear para asegurar integridad
+                    semaforoSistema.acquire(); 
                     
                     int quantumActual = (Integer) spnQuantum.getValue();
                     int velocidad = (Integer) spnVelocidad.getValue();
@@ -216,19 +266,16 @@ public class VentanaSimulador extends JFrame {
                     
                     SwingUtilities.invokeLater(() -> {
                         lblRelojGlobal.setText("MISSION CLOCK: Cycle " + relojGlobal);
-                        // Mostrar Modo SO al iniciar el ciclo de decisión
                         lblModoSistema.setText("MODO: SISTEMA OPERATIVO");
                         lblModoSistema.setForeground(Color.YELLOW);
                     });
 
-                    // 1. AUMENTAR TIEMPO DE ESPERA EN COLAS LISTAS
                     aumentarTiempoEspera(colaListos);
                     aumentarTiempoEspera(colaListosSuspendidos);
 
                     gestionarBloqueados();
                     revisarSuspendidos();
 
-                    // PLANIFICADOR
                     if (procesoEnCpu == null) {
                         if (!colaListos.isEmpty()) {
                             procesoEnCpu = colaListos.desencolar();
@@ -246,12 +293,9 @@ public class VentanaSimulador extends JFrame {
                         }
                     }
 
-                    // REGISTRAR USO CPU PARA LA GRÁFICA
                     registrarUsoCPU();
 
-                    // EJECUCIÓN
                     if (procesoEnCpu != null) {
-                        // Cambiamos visualmente a Modo Usuario
                         SwingUtilities.invokeLater(() -> {
                             lblModoSistema.setText("MODO: USUARIO (" + procesoEnCpu.getNombre() + ")");
                             lblModoSistema.setForeground(Color.CYAN);
@@ -311,8 +355,8 @@ public class VentanaSimulador extends JFrame {
 
                     actualizarTablas();
                     actualizarMemoriaVisual();
-                    actualizarMetricasGUI(); // Refresca Throughput y Espera en pantalla
-                    semaforoSistema.release(); // Liberar paso
+                    actualizarMetricasGUI(); 
+                    semaforoSistema.release(); 
                     
                     Thread.sleep(velocidad);
 
@@ -321,19 +365,27 @@ public class VentanaSimulador extends JFrame {
         });
         hiloSimulacion.start();
         
-        // HILO DE INTERRUPCIONES ASÍNCRONAS
         Thread hiloInterrupciones = new Thread(() -> {
             while (corriendo) {
                 try {
                     int tiempoEspera = (int)(Math.random() * 15000) + 15000; 
                     Thread.sleep(tiempoEspera);
 
-                    semaforoSistema.acquire(); // Interrumpimos el sistema
+                    semaforoSistema.acquire(); 
                     PCB interrupcion = new PCB("¡ALERTA MICRO-METEORITO!", 0, 15, relojGlobal + 30);
-                    interrupcion.setEstado("Listo");
-                    colaListos.insertarOrdenado(interrupcion, Cola.CRITERIO_PRIORIDAD); 
-                    
+
                     escribirLog("¡¡¡ EMERGENCIA !!! Interrupción de hardware detectada.");
+
+                    if (procesoEnCpu != null) {
+                        escribirLog("SUSPENDIENDO " + procesoEnCpu.getNombre() + " para atender emergencia.");
+                        procesoEnCpu.setEstado("Listo");
+                        agregarAColaListos(procesoEnCpu); 
+                    }
+
+                    procesoEnCpu = interrupcion;
+                    procesoEnCpu.setEstado("Ejecucion");
+                    contadorQuantum = 0; 
+
                     actualizarTablas();
                     semaforoSistema.release();
 
@@ -379,7 +431,6 @@ public class VentanaSimulador extends JFrame {
         double porcentajeUso = ((double) sumaUso / limite) * 100.0;
         misGraficas.agregarDatoCPU(relojGlobal, porcentajeUso);
     }
-    // ---------------------------------------------------
 
     // --- 4. GESTIÓN DE COLAS Y MÉTODOS AUXILIARES ---
     private void gestionarBloqueados() {
@@ -412,11 +463,23 @@ public class VentanaSimulador extends JFrame {
 
     private void revisarSuspendidos() {
         while (getOcupacionMemoria() < MAX_MEMORIA && !colaListosSuspendidos.isEmpty()) {
+            
+            String algoritmoActual = (String) cmbAlgoritmos.getSelectedItem();
+            int criterio = -1;
+            
+            if (algoritmoActual.equals("Prioridad")) criterio = Cola.CRITERIO_PRIORIDAD;
+            else if (algoritmoActual.equals("SRT")) criterio = Cola.CRITERIO_SRT;
+            else if (algoritmoActual.equals("EDF")) criterio = Cola.CRITERIO_EDF;
+            
+            if (criterio != -1) {
+                colaListosSuspendidos.ordenar(criterio); 
+            }
+            
             PCB rescatado = colaListosSuspendidos.desencolar();
             if (rescatado != null) {
                 rescatado.setEstado("Listo");
                 agregarAColaListos(rescatado);
-                escribirLog("SWAP IN: " + rescatado.getNombre() + " subió a RAM.");
+                escribirLog("SWAP IN: " + rescatado.getNombre() + " subió a RAM bajo política " + algoritmoActual + ".");
             }
         }
     }
@@ -440,7 +503,6 @@ public class VentanaSimulador extends JFrame {
                 break;
         }
 
-        // PREEMPTION
         if (procesoEnCpu != null) {
             boolean expropiar = false;
             if (algoritmo.equals("Prioridad") && proceso.getPrioridad() < procesoEnCpu.getPrioridad()) expropiar = true;
@@ -467,18 +529,11 @@ public class VentanaSimulador extends JFrame {
         for (int i = 0; i < cantidad; i++) {
             int inst = (int) (Math.random() * 80) + 20;
             int prio = (int) (Math.random() * 3) + 1; 
-            int dead = relojGlobal + (int) (Math.random() * 200) + 50; 
+            int dead = relojGlobal + inst + (int) (Math.random() * 100) + 20;
             
             PCB nuevo = new PCB("Proc-" + (int)(Math.random() * 1000), prio, inst, dead);
             
-            if (getOcupacionMemoria() < MAX_MEMORIA) {
-                nuevo.setEstado("Listo");
-                agregarAColaListos(nuevo);
-            } else {
-                nuevo.setEstado("Listo-Suspendido");
-                colaListosSuspendidos.encolar(nuevo);
-                escribirLog("SWAP OUT: Memoria llena, " + nuevo.getNombre() + " a Disco.");
-            }
+            gestionarIngresoMemoria(nuevo);
         }
         revisarSuspendidos();
         actualizarTablas();
@@ -494,7 +549,12 @@ public class VentanaSimulador extends JFrame {
                 while ((linea = br.readLine()) != null) {
                     String[] datos = linea.split(",");
                     if (datos.length >= 4) {
-                        PCB nuevo = new PCB(datos[0].trim(), Integer.parseInt(datos[1].trim()), Integer.parseInt(datos[2].trim()), Integer.parseInt(datos[3].trim()));
+                        String nombreCSV = datos[0].trim();
+                        int prioridadCSV = Integer.parseInt(datos[1].trim());
+                        int instruccionesCSV = Integer.parseInt(datos[2].trim());
+                        int deadlineAbsoluto = relojGlobal + Integer.parseInt(datos[3].trim());
+
+                        PCB nuevo = new PCB(nombreCSV, prioridadCSV, instruccionesCSV, deadlineAbsoluto);
                         if (getOcupacionMemoria() < MAX_MEMORIA) {
                             nuevo.setEstado("Listo");
                             agregarAColaListos(nuevo);
@@ -529,10 +589,9 @@ public class VentanaSimulador extends JFrame {
         if (procesos != null) {
             for (Object obj : procesos) {
                 PCB p = (PCB) obj;
-                // Columnas: "ID", "Nombre", "Status", "PC", "MAR", "Prio", "Deadline"
                 modelo.addRow(new Object[]{
                     p.getId(), p.getNombre(), p.getEstado(), 
-                    p.getProgramCounter(), p.getInstruccionesEjecutadas(), 
+                    p.getProgramCounter(), p.getMar(),
                     p.getPrioridad(), (p.getDeadline() - relojGlobal)
                 });
             }
@@ -561,26 +620,96 @@ public class VentanaSimulador extends JFrame {
         });
     }
 
-    // --- 6. MÉTODOS DE ESTILO ---
+    // --- 6. MÉTODOS DE ESTILO Y FIX DE LA TABLA ---
     private JScrollPane crearPanelTabla(String titulo, JTable tabla, Color color) {
         tabla.setBackground(colorPanel);
         tabla.setForeground(Color.WHITE);
-        tabla.setFont(new Font("Consolas", Font.PLAIN, 12));
-        tabla.getTableHeader().setBackground(Color.DARK_GRAY);
-        tabla.getTableHeader().setForeground(color);
+        tabla.setFont(new Font("Consolas", Font.PLAIN, 13));
+        
+        tabla.setRowHeight(28); 
+        tabla.setSelectionBackground(Color.decode("#38BDF8"));
+        tabla.setSelectionForeground(Color.BLACK);
+        tabla.setShowGrid(true);
+        tabla.setGridColor(Color.decode("#334155"));
+        
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer();
+        headerRenderer.setBackground(Color.decode("#0F172A")); 
+        headerRenderer.setForeground(color); 
+        headerRenderer.setFont(new Font("Consolas", Font.BOLD, 13));
+        headerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        headerRenderer.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, color)); 
+
+        for (int i = 0; i < tabla.getModel().getColumnCount(); i++) {
+            tabla.getColumnModel().getColumn(i).setHeaderRenderer(headerRenderer);
+        }
+        
+        int[] anchos = {35, 80, 100, 35, 35, 45, 85};
+        for (int i = 0; i < tabla.getColumnCount(); i++) {
+            if (i < anchos.length) {
+                tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+            }
+        }
+        
+        DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer();
+        cellRenderer.setHorizontalAlignment(JLabel.CENTER);
+        for (int i = 0; i < tabla.getModel().getColumnCount(); i++) {
+            tabla.getColumnModel().getColumn(i).setCellRenderer(cellRenderer);
+        }
         
         JScrollPane scroll = new JScrollPane(tabla);
-        scroll.setPreferredSize(new Dimension(300, 0));
+        scroll.setPreferredSize(new Dimension(380, 0)); 
+        scroll.setBackground(colorFondo); 
         scroll.getViewport().setBackground(colorPanel);
-        scroll.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), titulo, 0, 0, null, colorTexto));
+        scroll.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY), " " + titulo + " ", TitledBorder.LEFT, TitledBorder.TOP, new Font("Consolas", Font.BOLD, 14), Color.WHITE),
+            new EmptyBorder(5, 5, 5, 5) 
+        ));
         return scroll;
     }
 
     private void estilizarBoton(JButton btn, Color color) {
         btn.setBackground(color);
         btn.setForeground(Color.BLACK);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setMargin(new Insets(6, 15, 6, 15));
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+    }
+
+    private void gestionarIngresoMemoria(PCB nuevo) {
+        if (getOcupacionMemoria() < MAX_MEMORIA) {
+            nuevo.setEstado("Listo");
+            agregarAColaListos(nuevo);
+        } else {
+            Object[] procesosEnRAM = colaListos.toArray();
+            PCB peorProceso = null;
+            int mayorDeadline = -1;
+            
+            if (procesosEnRAM != null) {
+                for (Object obj : procesosEnRAM) {
+                    PCB p = (PCB) obj;
+                    if (p.getDeadline() > mayorDeadline) {
+                        mayorDeadline = p.getDeadline();
+                        peorProceso = p;
+                    }
+                }
+            }
+            
+            if (peorProceso != null && nuevo.getDeadline() < peorProceso.getDeadline()) {
+                colaListos.remover(peorProceso); 
+                peorProceso.setEstado("Listo-Suspendido");
+                colaListosSuspendidos.encolar(peorProceso);
+                escribirLog("SWAP OUT: " + peorProceso.getNombre() + " a Disco (Haciendo espacio).");
+                
+                nuevo.setEstado("Listo");
+                agregarAColaListos(nuevo);
+                escribirLog("SWAP IN: " + nuevo.getNombre() + " a RAM (Deadline crítico).");
+            } else {
+                nuevo.setEstado("Listo-Suspendido");
+                colaListosSuspendidos.encolar(nuevo);
+                escribirLog("SWAP: " + nuevo.getNombre() + " a Disco (Baja prioridad).");
+            }
+        }
     }
 }

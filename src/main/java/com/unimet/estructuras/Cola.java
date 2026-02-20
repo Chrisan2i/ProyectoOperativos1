@@ -169,4 +169,68 @@ public class Cola<T> {
             return new Object[0];
         }
     }
+    // Método para reordenar la cola dinámicamente en tiempo real
+    public void ordenar(int criterio) {
+        try {
+            mutex.acquire();
+            if (size > 1 && criterio != -1) {
+                boolean intercambiado;
+                do {
+                    intercambiado = false;
+                    Nodo<T> actual = pFirst;
+                    while (actual != null && actual.getSiguiente() != null) {
+                        PCB p1 = (PCB) actual.getContenido();
+                        PCB p2 = (PCB) actual.getSiguiente().getContenido();
+                        
+                        // Si el de la derecha (p2) es MEJOR que el de la izquierda (p1), los intercambiamos
+                        if (esMejor(p2, p1, criterio)) {
+                            T temp = actual.getContenido();
+                            actual.setContenido(actual.getSiguiente().getContenido());
+                            actual.getSiguiente().setContenido(temp);
+                            intercambiado = true;
+                        }
+                        actual = actual.getSiguiente();
+                    }
+                } while (intercambiado);
+            }
+            mutex.release();
+        } catch (InterruptedException e) { e.printStackTrace(); }
+    }
+    
+    // Método para extraer un proceso específico de la cola (Swap Out)
+    public void remover(T dato) {
+        try {
+            mutex.acquire();
+            if (isEmpty()) {
+                mutex.release();
+                return;
+            }
+            
+            // Si es el primero de la cola
+            if (pFirst.getContenido() == dato) {
+                pFirst = pFirst.getSiguiente();
+                if (pFirst == null) pLast = null;
+                size--;
+                mutex.release();
+                return;
+            }
+            
+            // Buscar en el resto de la cola
+            Nodo<T> actual = pFirst;
+            while (actual.getSiguiente() != null) {
+                if (actual.getSiguiente().getContenido() == dato) {
+                    actual.setSiguiente(actual.getSiguiente().getSiguiente());
+                    // Si borramos el último, actualizamos pLast
+                    if (actual.getSiguiente() == null) {
+                        pLast = actual;
+                    }
+                    size--;
+                    mutex.release();
+                    return;
+                }
+                actual = actual.getSiguiente();
+            }
+            mutex.release();
+        } catch (InterruptedException e) { e.printStackTrace(); }
+    }
 }
