@@ -541,37 +541,46 @@ public class VentanaSimulador extends JFrame {
     }
 
     private void cargarDesdeArchivo() {
-        JFileChooser fileChooser = new JFileChooser();
-        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File archivo = fileChooser.getSelectedFile();
-            try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(archivo))) {
-                String linea;
-                while ((linea = br.readLine()) != null) {
-                    String[] datos = linea.split(",");
-                    if (datos.length >= 4) {
-                        String nombreCSV = datos[0].trim();
-                        int prioridadCSV = Integer.parseInt(datos[1].trim());
-                        int instruccionesCSV = Integer.parseInt(datos[2].trim());
-                        int deadlineAbsoluto = relojGlobal + Integer.parseInt(datos[3].trim());
+    JFileChooser fileChooser = new JFileChooser();
+    if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+        File archivo = fileChooser.getSelectedFile();
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(archivo))) {
+            String linea;
+            int lineasCargadas = 0;
+            
+            while ((linea = br.readLine()) != null) {
+                if (linea.trim().isEmpty()) continue; // Ignora líneas vacías
 
-                        PCB nuevo = new PCB(nombreCSV, prioridadCSV, instruccionesCSV, deadlineAbsoluto);
-                        if (getOcupacionMemoria() < MAX_MEMORIA) {
-                            nuevo.setEstado("Listo");
-                            agregarAColaListos(nuevo);
-                        } else {
-                            nuevo.setEstado("Listo-Suspendido");
-                            colaListosSuspendidos.encolar(nuevo);
-                        }
+                String[] datos = linea.split(",");
+                if (datos.length >= 4) {
+                    try {
+                        // Intentamos extraer los datos
+                        String nombre = datos[0].trim();
+                        int prio = Integer.parseInt(datos[1].trim());
+                        int inst = Integer.parseInt(datos[2].trim());
+                        int deadRelativo = Integer.parseInt(datos[3].trim());
+
+                        // Creamos el proceso sumando el relojGlobal para que el deadline sea coherente
+                        PCB nuevo = new PCB(nombre, prio, inst, relojGlobal + deadRelativo);
+                        
+                        // Usamos la lógica de memoria inteligente que creamos antes
+                        gestionarIngresoMemoria(nuevo); 
+                        lineasCargadas++;
+                        
+                    } catch (NumberFormatException nfe) {
+                        // Si falla el número, escribimos en el log pero NO paramos el programa
+                        escribirLog("Línea ignorada (formato inválido): " + linea);
                     }
                 }
-                escribirLog("Archivo CSV cargado correctamente.");
-                actualizarTablas();
-                actualizarMemoriaVisual();
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, "Error al leer archivo.");
             }
+            escribirLog("Carga finalizada. Se procesaron " + lineasCargadas + " procesos.");
+            actualizarTablas();
+            actualizarMemoriaVisual();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error crítico: No se pudo acceder al archivo.");
         }
     }
+}
 
     // --- 5. ACTUALIZACIÓN VISUAL ---
     private void actualizarTablas() {
