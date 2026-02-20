@@ -150,4 +150,23 @@ public class Cola<T> {
         }
         return resultado;
     }
+    // Método para extraer los datos y enviarlos a la interfaz gráfica de forma segura
+    public Object[] toArray() {
+        try {
+            mutex.acquire(); // Bloqueamos para leer con seguridad
+            Object[] arreglo = new Object[size];
+            Nodo<T> actual = pFirst;
+            int i = 0;
+            while (actual != null && i < size) {
+                arreglo[i] = actual.getContenido(); // Usamos getContenido() de tu clase Nodo
+                actual = actual.getSiguiente();
+                i++;
+            }
+            mutex.release(); // Liberamos
+            return arreglo;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return new Object[0];
+        }
+    }
 }
