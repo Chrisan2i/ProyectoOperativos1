@@ -15,6 +15,7 @@ public class PCB {
     private int deadline; // Tiempo límite (ciclo reloj absoluto)
     private int cicloParaBloqueo; // En qué instrucción ocurre el evento (ej: ciclo 10)
     private int longitudBloqueo;  // Cuánto tiempo debe esperar (ej: 5 ciclos)
+    private int tiempoEsperado; //métrica de tiempo de espera
     
     // Constructor
     public PCB(String nombre, int prioridad, int instrucciones, int deadline) {
@@ -64,6 +65,8 @@ public class PCB {
         this.mar++;
         this.instruccionesEjecutadas++;
     }
+    public int getTiempoEsperado() { return tiempoEsperado; }
+    public void incrementarTiempoEspera() { this.tiempoEsperado++; }
     
     @Override
     public String toString() {

@@ -16,7 +16,7 @@ public class VentanaSimulador extends JFrame {
     private DefaultTableModel modeloListos, modeloBloqueados, modeloListosSusp, modeloBloqSusp;
     private JTable tablaListos, tablaBloqueados, tablaListosSusp, tablaBloqSusp;
 
-    private JLabel lblProcesoActual, lblRelojGlobal, lblMemoriaRAM;
+    private JLabel lblProcesoActual, lblRelojGlobal, lblMemoriaRAM, lblModoSistema, lblMetricas;
     private JProgressBar barraProgresoCPU;
     private JComboBox<String> cmbAlgoritmos;
     private JButton btnIniciar, btnCrearProceso, btnCrear20, btnCargarArchivo;
@@ -37,6 +37,12 @@ public class VentanaSimulador extends JFrame {
     private int contadorQuantum = 0; 
     private int relojGlobal = 0;
     
+    // Variables para las métricas del 20 (Sin usar Collections de Java)
+    private int totalProcesosTerminados = 0;
+    private double sumaTiempoEspera = 0;
+    private int[] historialCPU = new int[10]; // Guardará 1 si se usó, 0 si estuvo libre
+    private int indiceHistorial = 0;
+    
     // Semáforo global para pausar el CPU si hay una interrupción crítica
     private final Semaphore semaforoSistema = new Semaphore(1);
 
@@ -50,7 +56,7 @@ public class VentanaSimulador extends JFrame {
 
     public VentanaSimulador() {
         setTitle("UNIMET-Sat RTOS | Mission Control Center");
-        setSize(1280, 800);
+        setSize(1350, 850); // Un poco más grande para que quepa todo
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
@@ -92,13 +98,19 @@ public class VentanaSimulador extends JFrame {
         JPanel panelCentral = new JPanel(new BorderLayout());
         panelCentral.setOpaque(false);
 
-        JPanel panelCPU = new JPanel(new GridLayout(4, 1, 5, 5));
+        // Aumentamos a 5 filas para agregar el Modo Sistema
+        JPanel panelCPU = new JPanel(new GridLayout(5, 1, 5, 5));
         panelCPU.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(colorBorde), "RUNNING PROCESS (CPU)", 0, 0, null, colorBorde));
         panelCPU.setBackground(colorPanel);
         
         lblRelojGlobal = new JLabel("MISSION CLOCK: Cycle 0", SwingConstants.CENTER);
         lblRelojGlobal.setForeground(colorBorde);
         lblRelojGlobal.setFont(new Font("Impact", Font.PLAIN, 26));
+        
+        // ETIQUETA NUEVA: MODO SISTEMA O USUARIO
+        lblModoSistema = new JLabel("MODO: SISTEMA OPERATIVO", SwingConstants.CENTER);
+        lblModoSistema.setForeground(Color.YELLOW);
+        lblModoSistema.setFont(new Font("Consolas", Font.BOLD, 16));
         
         lblMemoriaRAM = new JLabel("Memory Usage: 0/5", SwingConstants.CENTER);
         lblMemoriaRAM.setForeground(colorVerde);
@@ -114,6 +126,7 @@ public class VentanaSimulador extends JFrame {
         barraProgresoCPU.setBackground(Color.BLACK);
 
         panelCPU.add(lblRelojGlobal);
+        panelCPU.add(lblModoSistema);
         panelCPU.add(lblMemoriaRAM);
         panelCPU.add(lblProcesoActual);
         panelCPU.add(barraProgresoCPU);
@@ -154,10 +167,17 @@ public class VentanaSimulador extends JFrame {
         panelExtraBotones.add(btnCrearProceso);
         panelExtraBotones.add(btnCrear20);
         panelExtraBotones.add(btnCargarArchivo);
+        
+        // ETIQUETA NUEVA: THROUGHPUT Y ESPERA
+        lblMetricas = new JLabel("Throughput: 0.00 proc/ciclo | Espera Promedio: 0.0 ciclos", SwingConstants.CENTER);
+        lblMetricas.setForeground(Color.CYAN);
+        lblMetricas.setFont(new Font("Consolas", Font.BOLD, 14));
 
         JPanel surCentral = new JPanel(new BorderLayout());
+        surCentral.setOpaque(false);
         surCentral.add(panelControles, BorderLayout.NORTH);
-        surCentral.add(panelExtraBotones, BorderLayout.SOUTH);
+        surCentral.add(panelExtraBotones, BorderLayout.CENTER);
+        surCentral.add(lblMetricas, BorderLayout.SOUTH);
 
         panelCentral.add(panelCPU, BorderLayout.CENTER);
         panelCentral.add(surCentral, BorderLayout.SOUTH);
@@ -194,7 +214,16 @@ public class VentanaSimulador extends JFrame {
                     int velocidad = (Integer) spnVelocidad.getValue();
                     relojGlobal++;
                     
-                    SwingUtilities.invokeLater(() -> lblRelojGlobal.setText("MISSION CLOCK: Cycle " + relojGlobal));
+                    SwingUtilities.invokeLater(() -> {
+                        lblRelojGlobal.setText("MISSION CLOCK: Cycle " + relojGlobal);
+                        // Mostrar Modo SO al iniciar el ciclo de decisión
+                        lblModoSistema.setText("MODO: SISTEMA OPERATIVO");
+                        lblModoSistema.setForeground(Color.YELLOW);
+                    });
+
+                    // 1. AUMENTAR TIEMPO DE ESPERA EN COLAS LISTAS
+                    aumentarTiempoEspera(colaListos);
+                    aumentarTiempoEspera(colaListosSuspendidos);
 
                     gestionarBloqueados();
                     revisarSuspendidos();
@@ -217,11 +246,21 @@ public class VentanaSimulador extends JFrame {
                         }
                     }
 
+                    // REGISTRAR USO CPU PARA LA GRÁFICA
+                    registrarUsoCPU();
+
                     // EJECUCIÓN
                     if (procesoEnCpu != null) {
+                        // Cambiamos visualmente a Modo Usuario
+                        SwingUtilities.invokeLater(() -> {
+                            lblModoSistema.setText("MODO: USUARIO (" + procesoEnCpu.getNombre() + ")");
+                            lblModoSistema.setForeground(Color.CYAN);
+                        });
+
                         if (relojGlobal > procesoEnCpu.getDeadline()) {
                             escribirLog("FALLO DEADLINE: " + procesoEnCpu.getNombre() + " abortado.");
                             misGraficas.registrarFallo();
+                            registrarMetricasFinProceso(procesoEnCpu);
                             procesoEnCpu.setEstado("Terminado");
                             procesoEnCpu = null;
                         } 
@@ -255,6 +294,7 @@ public class VentanaSimulador extends JFrame {
                             if (actual >= total) {
                                 escribirLog("ÉXITO: " + procesoEnCpu.getNombre() + " finalizado correctamente.");
                                 misGraficas.registrarExito();
+                                registrarMetricasFinProceso(procesoEnCpu);
                                 procesoEnCpu.setEstado("Terminado");
                                 procesoEnCpu = null;
                                 revisarSuspendidos();
@@ -271,6 +311,7 @@ public class VentanaSimulador extends JFrame {
 
                     actualizarTablas();
                     actualizarMemoriaVisual();
+                    actualizarMetricasGUI(); // Refresca Throughput y Espera en pantalla
                     semaforoSistema.release(); // Liberar paso
                     
                     Thread.sleep(velocidad);
@@ -301,6 +342,44 @@ public class VentanaSimulador extends JFrame {
         });
         hiloInterrupciones.start();
     }
+
+    // --- NUEVOS MÉTODOS MATEMÁTICOS PARA EL 20 PUNTOS ---
+    
+    private void aumentarTiempoEspera(Cola<PCB> cola) {
+        Object[] procesosArray = cola.toArray();
+        if (procesosArray != null) {
+            for (Object obj : procesosArray) {
+                ((PCB) obj).incrementarTiempoEspera();
+            }
+        }
+    }
+
+    private void registrarMetricasFinProceso(PCB p) {
+        totalProcesosTerminados++;
+        sumaTiempoEspera += p.getTiempoEsperado();
+    }
+
+    private void actualizarMetricasGUI() {
+        double throughput = (relojGlobal > 0) ? (double) totalProcesosTerminados / relojGlobal : 0;
+        double esperaPromedio = (totalProcesosTerminados > 0) ? sumaTiempoEspera / totalProcesosTerminados : 0;
+        
+        SwingUtilities.invokeLater(() -> {
+            lblMetricas.setText(String.format("Throughput: %.3f proc/ciclo | Espera Promedio: %.1f ciclos", throughput, esperaPromedio));
+        });
+    }
+
+    private void registrarUsoCPU() {
+        historialCPU[indiceHistorial % 10] = (procesoEnCpu != null) ? 1 : 0;
+        indiceHistorial++;
+        
+        int limite = Math.min(indiceHistorial, 10);
+        int sumaUso = 0;
+        for (int i = 0; i < limite; i++) sumaUso += historialCPU[i];
+        
+        double porcentajeUso = ((double) sumaUso / limite) * 100.0;
+        misGraficas.agregarDatoCPU(relojGlobal, porcentajeUso);
+    }
+    // ---------------------------------------------------
 
     // --- 4. GESTIÓN DE COLAS Y MÉTODOS AUXILIARES ---
     private void gestionarBloqueados() {
