@@ -90,6 +90,7 @@ public class Simulacion extends javax.swing.JFrame {
         btnCargar = new javax.swing.JButton();
         jLabel8 = new javax.swing.JLabel();
         lblMemoria = new javax.swing.JLabel();
+        btnCrear20 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -175,6 +176,9 @@ public class Simulacion extends javax.swing.JFrame {
         btnCargar.setText("Cargar");
         btnCargar.addActionListener(this::btnCargarActionPerformed);
 
+        btnCrear20.setText("Generar 20 Procesos Aleatorios");
+        btnCrear20.addActionListener(this::btnCrear20ActionPerformed);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -210,11 +214,14 @@ public class Simulacion extends javax.swing.JFrame {
                                 .addGap(31, 31, 31)
                                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
+                                .addGap(54, 54, 54)
+                                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
                                 .addGap(129, 129, 129)
                                 .addComponent(cmbAlgoritmos, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
-                                .addGap(54, 54, 54)
-                                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGap(94, 94, 94)
+                                .addComponent(btnCrear20, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addGap(70, 70, 70)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
@@ -274,7 +281,9 @@ public class Simulacion extends javax.swing.JFrame {
                                 .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 121, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
                                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnCrear20, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(30, 30, 30)
                                 .addComponent(cmbAlgoritmos, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -302,33 +311,8 @@ public class Simulacion extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnCrearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCrearActionPerformed
-        // 1. Crear datos aleatorios para el proceso (Simulando carga de trabajo)
-    int instrucciones = (int) (Math.random() * 100) + 10;
-    int prioridad = (int) (Math.random() * 3) + 1; // Prioridad 1, 2 o 3
-    int deadline = (int) (Math.random() * 200) + 50; 
-    
-    // 2. Crear el objeto PCB (Tu proceso)
-    // El nombre será algo como "Proceso-1", "Proceso-2", etc.
-    String nombre = "Proceso-" + (int)(Math.random() * 1000);
-    PCB nuevoProceso = new PCB(nombre, prioridad, instrucciones, deadline);
-    
-    // VERIFICAR MEMORIA ANTES DE ENTRAR
-    if (getOcupacionMemoria() < MAX_MEMORIA) {
-        // Hay espacio en RAM, entra normal
-        nuevoProceso.setEstado("Listo");
-        agregarAColaListos(nuevoProceso);
-    } else {
-        // ¡Memoria llena! Se va directo al DISCO (Suspendido)
-        nuevoProceso.setEstado("Listo-Suspendido");
-        colaListosSuspendidos.encolar(nuevoProceso);
-        System.out.println("Memoria llena. Proceso " + nuevoProceso.getId() + " enviado a Suspendidos.");
-    }
-    
-    revisarSuspendidos();
-    // Actualizar todas las colas visuales
-    refrescarColaListos();
-    
-    System.out.println("Proceso creado exitosamente: " + nombre);
+        generarProcesosAleatorios(1); // Genera solo 1
+        System.out.println("Proceso individual generado.");
     }//GEN-LAST:event_btnCrearActionPerformed
 
     private void btnIniciarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIniciarActionPerformed
@@ -579,6 +563,11 @@ public class Simulacion extends javax.swing.JFrame {
     }
     }//GEN-LAST:event_btnCargarActionPerformed
 
+    private void btnCrear20ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCrear20ActionPerformed
+        generarProcesosAleatorios(20); // Genera los 20 de golpe
+        System.out.println("Generación masiva de 20 procesos ejecutada.");
+    }//GEN-LAST:event_btnCrear20ActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -799,6 +788,28 @@ public class Simulacion extends javax.swing.JFrame {
         btn.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 20, 10, 20));
         btn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
     }
+    // Método centralizado para generar N procesos aleatorios
+    private void generarProcesosAleatorios(int cantidad) {
+        for (int i = 0; i < cantidad; i++) {
+            int instrucciones = (int) (Math.random() * 100) + 10;
+            int prioridad = (int) (Math.random() * 3) + 1; // Prioridad 1, 2 o 3
+            int deadline = relojGlobal + (int) (Math.random() * 200) + 50; 
+            
+            String nombre = "Proceso-" + (int)(Math.random() * 1000);
+            PCB nuevoProceso = new PCB(nombre, prioridad, instrucciones, deadline);
+            
+            if (getOcupacionMemoria() < MAX_MEMORIA) {
+                nuevoProceso.setEstado("Listo");
+                agregarAColaListos(nuevoProceso);
+            } else {
+                nuevoProceso.setEstado("Listo-Suspendido");
+                colaListosSuspendidos.encolar(nuevoProceso);
+                System.out.println("Memoria llena. " + nombre + " a Suspendidos.");
+            }
+        }
+        revisarSuspendidos();
+        refrescarColaListos();
+    }
     
     // --- FIN DE LO QUE TIENES QUE PEGAR ---
     
@@ -806,6 +817,7 @@ public class Simulacion extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnCargar;
     private javax.swing.JButton btnCrear;
+    private javax.swing.JButton btnCrear20;
     private javax.swing.JButton btnIniciar;
     private javax.swing.JComboBox<String> cmbAlgoritmos;
     private javax.swing.JLabel jLabel1;
