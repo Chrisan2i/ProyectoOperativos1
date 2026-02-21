@@ -1,6 +1,5 @@
 
 package com.unimet.proyecto_operativo1;
-// com.unimet.interfaz.Simulacion;
 import com.unimet.interfaz.VentanaSimulador;
 import javax.swing.SwingUtilities;
 
