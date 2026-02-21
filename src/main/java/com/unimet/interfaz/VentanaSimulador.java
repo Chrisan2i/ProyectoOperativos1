@@ -509,6 +509,11 @@ public class VentanaSimulador extends JFrame {
             else if (algoritmo.equals("SRT") && (proceso.getInstruccionesTotales() - proceso.getInstruccionesEjecutadas()) < (procesoEnCpu.getInstruccionesTotales() - procesoEnCpu.getInstruccionesEjecutadas())) expropiar = true;
             else if (algoritmo.equals("EDF") && proceso.getDeadline() < procesoEnCpu.getDeadline()) expropiar = true;
 
+            if (procesoEnCpu.getPrioridad() != 0) {
+                if (algoritmo.equals("Prioridad") && proceso.getPrioridad() < procesoEnCpu.getPrioridad()) expropiar = true;
+                else if (algoritmo.equals("SRT") && (proceso.getInstruccionesTotales() - proceso.getInstruccionesEjecutadas()) < (procesoEnCpu.getInstruccionesTotales() - procesoEnCpu.getInstruccionesEjecutadas())) expropiar = true;
+                else if (algoritmo.equals("EDF") && proceso.getDeadline() < procesoEnCpu.getDeadline()) expropiar = true;
+            }
             if (expropiar) {
                 escribirLog("PREEMPTION: " + proceso.getNombre() + " expropia la CPU a " + procesoEnCpu.getNombre());
                 PCB saliente = procesoEnCpu;
