@@ -505,10 +505,6 @@ public class VentanaSimulador extends JFrame {
 
         if (procesoEnCpu != null) {
             boolean expropiar = false;
-            if (algoritmo.equals("Prioridad") && proceso.getPrioridad() < procesoEnCpu.getPrioridad()) expropiar = true;
-            else if (algoritmo.equals("SRT") && (proceso.getInstruccionesTotales() - proceso.getInstruccionesEjecutadas()) < (procesoEnCpu.getInstruccionesTotales() - procesoEnCpu.getInstruccionesEjecutadas())) expropiar = true;
-            else if (algoritmo.equals("EDF") && proceso.getDeadline() < procesoEnCpu.getDeadline()) expropiar = true;
-
             if (procesoEnCpu.getPrioridad() != 0) {
                 if (algoritmo.equals("Prioridad") && proceso.getPrioridad() < procesoEnCpu.getPrioridad()) expropiar = true;
                 else if (algoritmo.equals("SRT") && (proceso.getInstruccionesTotales() - proceso.getInstruccionesEjecutadas()) < (procesoEnCpu.getInstruccionesTotales() - procesoEnCpu.getInstruccionesEjecutadas())) expropiar = true;
