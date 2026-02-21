@@ -485,23 +485,23 @@ public class VentanaSimulador extends JFrame {
     }
 
     public void agregarAColaListos(PCB proceso) {
-        String algoritmo = (String) cmbAlgoritmos.getSelectedItem();
+        String algoritmo = cmbAlgoritmos.getSelectedItem().toString();
 
-        switch (algoritmo) {
-            case "FCFS":
-            case "RR":
-                colaListos.encolar(proceso); 
-                break;
-            case "Prioridad":
-                colaListos.insertarOrdenado(proceso, Cola.CRITERIO_PRIORIDAD); 
-                break;
-            case "SRT":
-                colaListos.insertarOrdenado(proceso, Cola.CRITERIO_SRT); 
-                break;
-            case "EDF":
-                colaListos.insertarOrdenado(proceso, Cola.CRITERIO_EDF); 
-                break;
+        // 1. Insertar el proceso en la posición correcta según el algoritmo
+        if (algoritmo.equals("EDF")) {
+            colaListos.insertarOrdenado(proceso, Cola.CRITERIO_EDF);
+        } 
+        else if (algoritmo.equals("SRT")) {
+            colaListos.insertarOrdenado(proceso, Cola.CRITERIO_SRT);
+        } 
+        else if (algoritmo.equals("Prioridad")) {
+            colaListos.insertarOrdenado(proceso, Cola.CRITERIO_PRIORIDAD);
+        } 
+        else {
+            // Si es FCFS o Round Robin, simplemente se encola al final (FIFO)
+            colaListos.encolar(proceso);
         }
+        actualizarTablasGUI();
 
         if (procesoEnCpu != null) {
             boolean expropiar = false;
@@ -522,6 +522,48 @@ public class VentanaSimulador extends JFrame {
                 }
                 procesoEnCpu = null; 
                 contadorQuantum = 0;
+            }
+        }
+    }
+    // Método para refrescar la interfaz gráfica con el estado real de las memorias
+    public void actualizarTablasGUI() {
+        // 1. Limpiamos visualmente todas las tablas dejándolas en 0 filas
+        modeloListos.setRowCount(0);
+        modeloListosSusp.setRowCount(0);
+        modeloBloqueados.setRowCount(0);
+        // modeloBloqSusp.setRowCount(0); // Descomenta si también tienes esta tabla
+
+        // 2. Llenamos la tabla de RAM (Cola de Listos)
+        Object[] procesosRAM = colaListos.toArray();
+        if (procesosRAM != null) {
+            for (Object obj : procesosRAM) {
+                PCB p = (PCB) obj;
+                // Ajusta las columnas según lo que muestre tu JTable
+                modeloListos.addRow(new Object[]{
+                    p.getId(), p.getNombre(), p.getPrioridad(), p.getInstruccionesTotales(), p.getDeadline()
+                });
+            }
+        }
+
+        // 3. Llenamos la tabla de Disco (Listos-Suspendidos)
+        Object[] procesosDisco = colaListosSuspendidos.toArray();
+        if (procesosDisco != null) {
+            for (Object obj : procesosDisco) {
+                PCB p = (PCB) obj;
+                modeloListosSusp.addRow(new Object[]{
+                    p.getId(), p.getNombre(), p.getPrioridad(), p.getInstruccionesTotales(), p.getDeadline()
+                });
+            }
+        }
+
+        // 4. Llenamos la tabla de Bloqueados (E/S)
+        Object[] procesosBloqueados = colaBloqueados.toArray();
+        if (procesosBloqueados != null) {
+            for (Object obj : procesosBloqueados) {
+                PCB p = (PCB) obj;
+                modeloBloqueados.addRow(new Object[]{
+                    p.getId(), p.getNombre(), p.getPrioridad(), p.getInstruccionesTotales(), p.getDeadline()
+                });
             }
         }
     }
@@ -687,38 +729,78 @@ public class VentanaSimulador extends JFrame {
         btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
     }
 
-    private void gestionarIngresoMemoria(PCB nuevo) {
+    public void gestionarIngresoMemoria(PCB nuevo) {
         if (getOcupacionMemoria() < MAX_MEMORIA) {
+            // Si hay espacio en la RAM, entra directo
             nuevo.setEstado("Listo");
             agregarAColaListos(nuevo);
         } else {
-            Object[] procesosEnRAM = colaListos.toArray();
+            // La RAM está llena (5 procesos). 
+            String algoritmo = cmbAlgoritmos.getSelectedItem().toString();
+            
+            // ¡AQUÍ SE CREA LA VARIABLE! Toma la colaListos y la convierte en arreglo
+            Object[] procesosEnRAM = colaListos.toArray(); 
+            
             PCB peorProceso = null;
-            int mayorDeadline = -1;
-            
-            if (procesosEnRAM != null) {
-                for (Object obj : procesosEnRAM) {
-                    PCB p = (PCB) obj;
-                    if (p.getDeadline() > mayorDeadline) {
-                        mayorDeadline = p.getDeadline();
-                        peorProceso = p;
+            boolean expropiarMemoria = false;
+
+            if (procesosEnRAM != null && procesosEnRAM.length > 0) {
+                // 1. Lógica para EDF
+                if (algoritmo.equals("EDF")) {
+                    int mayorDeadline = -1;
+                    for (Object obj : procesosEnRAM) {
+                        PCB p = (PCB) obj;
+                        if (p.getDeadline() > mayorDeadline) {
+                            mayorDeadline = p.getDeadline();
+                            peorProceso = p;
+                        }
                     }
+                    if (peorProceso != null && nuevo.getDeadline() < peorProceso.getDeadline()) expropiarMemoria = true;
+                } 
+                // 2. Lógica para PRIORIDAD
+                else if (algoritmo.equals("Prioridad")) {
+                    int peorPrioridad = -1; // Número mayor = peor prioridad
+                    for (Object obj : procesosEnRAM) {
+                        PCB p = (PCB) obj;
+                        if (p.getPrioridad() > peorPrioridad) {
+                            peorPrioridad = p.getPrioridad();
+                            peorProceso = p;
+                        }
+                    }
+                    if (peorProceso != null && nuevo.getPrioridad() < peorProceso.getPrioridad()) expropiarMemoria = true;
+                } 
+                // 3. Lógica para SRT
+                else if (algoritmo.equals("SRT")) {
+                    int mayorTiempoRestante = -1;
+                    for (Object obj : procesosEnRAM) {
+                        PCB p = (PCB) obj;
+                        int restante = p.getInstruccionesTotales() - p.getInstruccionesEjecutadas();
+                        if (restante > mayorTiempoRestante) {
+                            mayorTiempoRestante = restante;
+                            peorProceso = p;
+                        }
+                    }
+                    int nuevoRestante = nuevo.getInstruccionesTotales();
+                    if (peorProceso != null && nuevoRestante < mayorTiempoRestante) expropiarMemoria = true;
                 }
+                // FCFS y RR no expropian memoria (expropiarMemoria sigue false)
             }
-            
-            if (peorProceso != null && nuevo.getDeadline() < peorProceso.getDeadline()) {
+
+            // --- EJECUCIÓN DEL SWAP ---
+            if (expropiarMemoria && peorProceso != null) {
                 colaListos.remover(peorProceso); 
                 peorProceso.setEstado("Listo-Suspendido");
                 colaListosSuspendidos.encolar(peorProceso);
-                escribirLog("SWAP OUT: " + peorProceso.getNombre() + " a Disco (Haciendo espacio).");
+                escribirLog("SWAP OUT: " + peorProceso.getNombre() + " a Disco (Haciendo espacio bajo " + algoritmo + ").");
                 
                 nuevo.setEstado("Listo");
                 agregarAColaListos(nuevo);
-                escribirLog("SWAP IN: " + nuevo.getNombre() + " a RAM (Deadline crítico).");
+                escribirLog("SWAP IN: " + nuevo.getNombre() + " a RAM (Cumple criterio de " + algoritmo + ").");
             } else {
+                // Si es FCFS, RR, o si el nuevo proceso NO es mejor que los que ya están
                 nuevo.setEstado("Listo-Suspendido");
                 colaListosSuspendidos.encolar(nuevo);
-                escribirLog("SWAP: " + nuevo.getNombre() + " a Disco (Baja prioridad).");
+                escribirLog("SWAP: RAM llena. " + nuevo.getNombre() + " a Disco (Esperando su turno).");
             }
         }
     }
