@@ -149,6 +149,10 @@ public class VentanaSimulador extends JFrame {
         ));
 
         cmbAlgoritmos = new JComboBox<>(new String[]{"FCFS", "RR", "Prioridad", "SRT", "EDF"});
+        // Escuchador que detecta cuando el usuario cambia el algoritmo en la interfaz
+        cmbAlgoritmos.addActionListener(e -> {
+            reorganizarPorCambioAlgoritmo();
+        });
         cmbAlgoritmos.setFont(new Font("Consolas", Font.BOLD, 14));
         cmbAlgoritmos.addActionListener(e -> {
             String algoritmo = (String) cmbAlgoritmos.getSelectedItem();
@@ -803,5 +807,109 @@ public class VentanaSimulador extends JFrame {
                 escribirLog("SWAP: RAM llena. " + nuevo.getNombre() + " a Disco (Esperando su turno).");
             }
         }
+    }
+    
+    
+    // Método maestro para reevaluar RAM y Disco cuando el usuario cambia de algoritmo en vivo
+    public void reorganizarPorCambioAlgoritmo() {
+        String algoritmo = cmbAlgoritmos.getSelectedItem().toString();
+        escribirLog(">>> REEVALUANDO MEMORIA: Cambio de algoritmo a " + algoritmo + " <<<");
+
+        // 1. Obtener los procesos de RAM y Disco
+        Object[] enRam = colaListos.toArray();
+        Object[] enDisco = colaListosSuspendidos.toArray();
+        
+        int sizeRam = (enRam != null) ? enRam.length : 0;
+        int sizeDisco = (enDisco != null) ? enDisco.length : 0;
+        int totalProcesos = sizeRam + sizeDisco;
+        
+        // Si no hay procesos en el sistema, no hacemos nada para evitar errores
+        if (totalProcesos == 0) return; 
+
+        // 2. Unir TODOS los procesos en un solo arreglo (Respetando la restricción de no usar java.util.*)
+        PCB[] todos = new PCB[totalProcesos];
+        int index = 0;
+        if (enRam != null) {
+            for (Object obj : enRam) {
+                todos[index++] = (PCB) obj;
+            }
+        }
+        if (enDisco != null) {
+            for (Object obj : enDisco) {
+                todos[index++] = (PCB) obj;
+            }
+        }
+
+        // 3. ORDENAR el arreglo completo según las reglas del algoritmo seleccionado (Bubble Sort)
+        for (int i = 0; i < todos.length - 1; i++) {
+            for (int j = 0; j < todos.length - i - 1; j++) {
+                boolean intercambiar = false;
+                PCB p1 = todos[j];
+                PCB p2 = todos[j+1];
+
+                // FCFS y RR: Orden estricto por orden de llegada (ID)
+                if (algoritmo.equals("FCFS") || algoritmo.equals("RR")) {
+                    if (p1.getId() > p2.getId()) {
+                        intercambiar = true;
+                    }
+                } 
+                // EDF: Orden por Deadline más corto. (Desempate: ID)
+                else if (algoritmo.equals("EDF")) {
+                    if (p1.getDeadline() > p2.getDeadline()) {
+                        intercambiar = true;
+                    } else if (p1.getDeadline() == p2.getDeadline() && p1.getId() > p2.getId()) {
+                        intercambiar = true; 
+                    }
+                } 
+                // PRIORIDAD: Orden por prioridad menor. (Desempate: ID)
+                else if (algoritmo.equals("Prioridad")) {
+                    if (p1.getPrioridad() > p2.getPrioridad()) {
+                        intercambiar = true;
+                    } else if (p1.getPrioridad() == p2.getPrioridad() && p1.getId() > p2.getId()) {
+                        intercambiar = true; 
+                    }
+                } 
+                // SRT: Orden por tiempo restante menor. (Desempate: ID)
+                else if (algoritmo.equals("SRT")) {
+                    int restante1 = p1.getInstruccionesTotales() - p1.getInstruccionesEjecutadas();
+                    int restante2 = p2.getInstruccionesTotales() - p2.getInstruccionesEjecutadas();
+                    
+                    if (restante1 > restante2) {
+                        intercambiar = true;
+                    } else if (restante1 == restante2 && p1.getId() > p2.getId()) {
+                        intercambiar = true; 
+                    }
+                }
+
+                // Ejecutamos el intercambio si alguna condición se cumplió
+                if (intercambiar) {
+                    PCB temp = todos[j];
+                    todos[j] = todos[j+1];
+                    todos[j+1] = temp;
+                }
+            }
+        }
+
+        // 4. Vaciar las colas actuales para reconstruirlas impecablemente
+        colaListos = new Cola<>();
+        colaListosSuspendidos = new Cola<>();
+
+        // 5. Repartir el arreglo ya ordenado: los primeros a RAM, el resto a Disco
+        for (int i = 0; i < todos.length; i++) {
+            PCB p = todos[i];
+            
+            if (i < MAX_MEMORIA) { 
+                // Hay espacio en la RAM (Los 5 mejores procesos)
+                p.setEstado("Listo");
+                colaListos.encolar(p);
+            } else {
+                // La RAM ya se llenó, los siguientes van al disco (Swap)
+                p.setEstado("Listo-Suspendido");
+                colaListosSuspendidos.encolar(p);
+            }
+        }
+
+        // 6. Actualizar las tablas visuales para reflejar la nueva distribución
+        actualizarTablasGUI();
     }
 }
