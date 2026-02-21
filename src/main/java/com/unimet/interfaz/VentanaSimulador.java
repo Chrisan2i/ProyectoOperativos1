@@ -591,10 +591,11 @@ public class VentanaSimulador extends JFrame {
     JFileChooser fileChooser = new JFileChooser();
     if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
         File archivo = fileChooser.getSelectedFile();
+        
         try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(archivo))) {
             String linea;
             int lineasCargadas = 0;
-            
+            reiniciarSistema();
             while ((linea = br.readLine()) != null) {
                 if (linea.trim().isEmpty()) continue; // Ignora líneas vacías
 
@@ -911,5 +912,17 @@ public class VentanaSimulador extends JFrame {
 
         // 6. Actualizar las tablas visuales para reflejar la nueva distribución
         actualizarTablasGUI();
+    }
+    // Método para limpiar el sistema antes de cargar un nuevo escenario (CSV)
+    public void reiniciarSistema() {
+        escribirLog(">>> INICIANDO REINICIO DEL SISTEMA <<<");
+
+        // 1. Vaciamos TODAS las memorias creando colas nuevas (sin usar java.util)
+        colaListos = new Cola<>();
+        colaListosSuspendidos = new Cola<>();
+        // 3. Actualizamos las tablas para que la interfaz quede en blanco
+        actualizarTablasGUI();
+        
+        escribirLog("--- SISTEMA LIMPIO: Listo para cargar nueva misión ---");
     }
 }
